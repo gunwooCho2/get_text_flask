@@ -1,4 +1,6 @@
 from flask import Flask, request, Response, stream_with_context, jsonify
+from flask_cors import CORS  # ✅ CORS 추가
+
 import cv2
 import numpy as np
 import json
@@ -8,6 +10,8 @@ import easyocr
 from functools import wraps
 
 app = Flask(__name__)
+CORS(app)  # ✅ 모든 도메인 허용 기본 설정
+
 model_path = "models/word_with_icon_MASKING_model_CNN_ver_8.h5"
 model = tf.keras.models.load_model(model_path, compile=False)
 reader = easyocr.Reader(['ko', 'en'], gpu=True)
@@ -23,8 +27,7 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# 어드민 키 확인을 위한 어노테이션
-# @admin_required
+# @admin_required  # 관리용 인증 데코레이터 (일단 주석 처리)
 @app.route('/image/upload', methods=['POST'])
 def upload_and_stream():
     if 'image' not in request.files:
@@ -32,8 +35,8 @@ def upload_and_stream():
 
     file = request.files['image']
     file_bytes = np.frombuffer(file.read(), np.uint8)
-
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+
     text_boxes = get_boxes(model, img)
     if len(text_boxes) == 0:
         return jsonify({
